@@ -41,3 +41,108 @@ enum DealStatus {
   COMPLETED
   CANCELED
 }
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  fullName  String
+  role      UserRole
+  deals     Deal[]   @relation("UserDeals")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  address     String?
+  buildings   Building[]
+  units       Unit[]
+}
+
+model Building {
+  id             String    @id @default(cuid())
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id])
+  label          String
+  numberOfFloors Int?
+  sections       Section[]
+  floors         Floor[]
+  units          Unit[]
+}
+
+model Section {
+  id         String    @id @default(cuid())
+  buildingId String
+  building   Building  @relation(fields: [buildingId], references: [id])
+  name       String
+  floors     Floor[]
+  units      Unit[]
+}
+
+model Floor {
+  id         String   @id @default(cuid())
+  buildingId String
+  building   Building @relation(fields: [buildingId], references: [id])
+  sectionId  String?
+  section    Section? @relation(fields: [sectionId], references: [id])
+  number     Int
+  units      Unit[]
+}
+
+model Unit {
+  id              String     @id @default(cuid())
+  type            UnitType
+  projectId       String
+  project         Project    @relation(fields: [projectId], references: [id])
+  buildingId      String
+  building        Building   @relation(fields: [buildingId], references: [id])
+  sectionId       String?
+  section         Section?   @relation(fields: [sectionId], references: [id])
+  floorId         String?
+  floor           Floor?     @relation(fields: [floorId], references: [id])
+  number          String?
+  area            Float?
+  rooms           Int?
+  price           Decimal?
+  status          UnitStatus @default(FREE)
+  modelElementKey String?
+  deals           Deal[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  fullName  String
+  phone     String
+  email     String?
+  deals     Deal[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Deal {
+  id        String   @id @default(cuid())
+  unitId    String
+  unit      Unit     @relation(fields: [unitId], references: [id])
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id])
+  managerId String
+  manager   User     @relation("UserDeals", fields: [managerId], references: [id])
+  type      DealType
+  status    DealStatus
+  documents Document[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  type      String
+  fileUrl   String
+  createdAt DateTime @default(now())
+}
