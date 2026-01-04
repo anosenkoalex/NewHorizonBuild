@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
-import { DealsService } from './deals.service';
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { CreateDealDto, DealsService } from './deals.service';
 
 @Controller('deals')
 export class DealsController {
@@ -8,5 +8,10 @@ export class DealsController {
   @Get()
   findAll() {
     return this.dealsService.findAll();
+  }
+
+  @Post()
+  create(@Body() dto: CreateDealDto) {
+    return this.dealsService.create(dto);
   }
 }
