@@ -6,3 +6,38 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SALES_HEAD
+  LEGAL
+  VIEWER
+}
+
+enum UnitType {
+  APARTMENT
+  COMMERCIAL
+  PARKING
+}
+
+enum UnitStatus {
+  FREE
+  RESERVED
+  SOLD
+  INSTALLMENT
+  EQUITY
+}
+
+enum DealType {
+  SALE
+  INSTALLMENT
+  EQUITY
+}
+
+enum DealStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELED
+}
