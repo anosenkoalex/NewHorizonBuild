@@ -9,8 +9,28 @@ export interface Unit {
   price?: number | null;
 }
 
-export async function fetchUnits(): Promise<Unit[]> {
-  const res = await fetch(`${API_BASE_URL}/units`);
+export interface UnitsFilter {
+  status?: string;
+  type?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minArea?: number;
+  maxArea?: number;
+}
+
+export async function fetchUnits(filters?: UnitsFilter): Promise<Unit[]> {
+  const params = new URLSearchParams();
+
+  Object.entries(filters ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, String(value));
+    }
+  });
+
+  const queryString = params.toString();
+  const url = queryString ? `${API_BASE_URL}/units?${queryString}` : `${API_BASE_URL}/units`;
+
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error('Failed to fetch units');
   }
