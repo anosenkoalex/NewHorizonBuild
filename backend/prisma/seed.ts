@@ -1,8 +1,53 @@
-import { PrismaClient, Prisma, UnitStatus, UnitType, DealStatus, DealType, UserRole } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  UnitStatus,
+  UnitType,
+  DealStatus,
+  DealType,
+  UserRole,
+} from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // --- Пользователи с паролями ---
+  const adminPasswordHash = await bcrypt.hash('admin123', 10);
+  const managerPasswordHash = await bcrypt.hash('manager123', 10);
+
+  const [adminUser, managerUser] = await Promise.all([
+    prisma.user.upsert({
+      where: { email: 'admin@newhorizon.kz' },
+      update: {
+        fullName: 'Администратор Системы',
+        role: UserRole.ADMIN,
+        passwordHash: adminPasswordHash,
+      },
+      create: {
+        email: 'admin@newhorizon.kz',
+        fullName: 'Администратор Системы',
+        role: UserRole.ADMIN,
+        passwordHash: adminPasswordHash,
+      },
+    }),
+    prisma.user.upsert({
+      where: { email: 'manager@newhorizon.kz' },
+      update: {
+        fullName: 'Мария Менеджер',
+        role: UserRole.MANAGER,
+        passwordHash: managerPasswordHash,
+      },
+      create: {
+        email: 'manager@newhorizon.kz',
+        fullName: 'Мария Менеджер',
+        role: UserRole.MANAGER,
+        passwordHash: managerPasswordHash,
+      },
+    }),
+  ]);
+
+  // --- Проект / здание / этажи / юниты как у тебя было ---
   const project = await prisma.project.create({
     data: {
       name: 'Demo ЖК NewHorizon',
@@ -117,23 +162,6 @@ async function main() {
     }),
   ]);
 
-  const [adminUser, managerUser] = await Promise.all([
-    prisma.user.create({
-      data: {
-        email: 'admin@newhorizon.kz',
-        fullName: 'Администратор Системы',
-        role: UserRole.ADMIN,
-      },
-    }),
-    prisma.user.create({
-      data: {
-        email: 'manager@newhorizon.kz',
-        fullName: 'Мария Менеджер',
-        role: UserRole.MANAGER,
-      },
-    }),
-  ]);
-
   const unitForDeal1 = units[2];
   const unitForDeal2 = units[4];
 
@@ -158,7 +186,7 @@ async function main() {
     }),
   ]);
 
-  console.log('Demo data has been seeded');
+  console.log('Demo data has been seeded (users with passwords, project, units, clients, deals).');
 }
 
 main()

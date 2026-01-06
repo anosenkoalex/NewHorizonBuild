@@ -1,60 +1,297 @@
 .viewerPage {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+  padding: 24px 32px;
 }
 
-.pageTitle {
-  margin: 0;
+.viewerPage h1 {
   font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 24px;
 }
 
-.layout {
+.viewerLayout {
   display: flex;
-  gap: 24px;
   align-items: flex-start;
+  gap: 24px;
 }
 
-.sidebar {
-  width: 28%;
-  min-width: 240px;
-  background-color: #f7f9fc;
-  border: 1px solid #e2e6ef;
-  border-radius: 8px;
-  padding: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+.viewerSidebar {
+  width: 320px;
 }
 
 .sidebarTitle {
-  margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0f172a;
+  margin-bottom: 8px;
 }
 
-.placeholderList {
-  list-style: none;
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.fieldGroup label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.fieldGroup select,
+.fieldGroup input {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.fieldGroup select:focus,
+.fieldGroup input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+  background-color: #ffffff;
+}
+
+.emptyText {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-top: 8px;
+}
+
+.unitList {
+  margin: 12px 0 0;
   padding: 0;
-  margin: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
 }
 
-.viewerArea {
-  flex: 1;
+.unitItem {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  background-color: #f8fafc;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.05s ease;
+  font-size: 14px;
 }
 
-.viewerPlaceholder {
-  height: 560px;
-  border: 2px dashed #c8d0e0;
-  background: linear-gradient(135deg, #f0f4ff, #ffffff);
-  border-radius: 10px;
+.unitItem:hover {
+  background-color: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.unitItemActive {
+  border-color: #2563eb;
+  background-color: #e0ecff;
+}
+
+.unitTitle {
   display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.unitType {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.unitMeta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.unitStatusBadge {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #495361;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #0b1120;
+}
+
+/* Правая часть */
+
+.viewerCanvas {
+  flex: 1;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #f8fafc,
+    #f8fafc 8px,
+    #f1f5f9 8px,
+    #f1f5f9 16px
+  );
+}
+
+.viewerCanvas h2 {
   font-size: 18px;
-  text-align: center;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.viewerCanvas p {
+  font-size: 14px;
+  color: #475569;
+}
+
+.canvasWrapper {
+  width: 100%;
+  height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #1f2937;
+  background: #020617;
+  margin-bottom: 16px;
+}
+
+/* Легенда статусов */
+
+.statusLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.statusLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.statusLegendLabel {
+  font-size: 12px;
+  color: #475569;
+}
+
+/* Детали юнита */
+
+.unitDetails {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.unitDetailsTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.unitDetails p + p {
+  margin-top: 4px;
+}
+
+.unitDetailsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+/* Планировка */
+
+.planPreview {
+  flex: 1 1 240px;
+}
+
+.planTitle {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.planImageWrapper {
+  max-height: 280px;
+  overflow: auto;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+}
+
+.planImageWrapper img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Редактирование полей */
+
+.editRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.helperText {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.errorText {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+/* Кнопки */
+
+.saveButton {
+  margin-top: 6px;
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.05s ease,
+    box-shadow 0.15s ease;
+}
+
+.saveButton:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.saveButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3);
+}
+
+.saveButton:disabled {
+  background-color: #9ca3af;
+  cursor: default;
+  box-shadow: none;
 }
