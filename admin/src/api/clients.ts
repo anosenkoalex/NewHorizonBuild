@@ -1,4 +1,3 @@
-// admin/src/api/clients.ts
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 // тот же ключ, что использует AuthContext
@@ -17,6 +16,66 @@ export interface ClientDealRef {
   createdAt: string;
 }
 
+export interface ClientDealDetailedCommentAuthor {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+}
+
+export interface ClientDealDetailedComment {
+  id: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+  author?: ClientDealDetailedCommentAuthor | null;
+}
+
+export interface ClientDealDetailedStatusActor {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+}
+
+export interface ClientDealDetailedStatusHistoryItem {
+  id: string;
+  fromStatus?: string | null;
+  toStatus: string;
+  comment?: string | null;
+  createdAt: string;
+  changedBy?: ClientDealDetailedStatusActor | null;
+}
+
+export interface ClientDealDetailedUnit {
+  id: string;
+  number: string | null;
+  type: string;
+  status: string;
+  area?: number | null;
+  price?: number | string | null;
+  projectId?: string | null;
+}
+
+export interface ClientDealDetailedManager {
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+}
+
+export interface ClientDealDetailed {
+  id: string;
+  type: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  unit?: ClientDealDetailedUnit | null;
+  manager?: ClientDealDetailedManager | null;
+  comments?: ClientDealDetailedComment[];
+  statusHistory?: ClientDealDetailedStatusHistoryItem[];
+}
+
 export interface Client {
   id: string;
   fullName: string;
@@ -26,10 +85,47 @@ export interface Client {
   deals: ClientDealRef[];
 }
 
+export interface ClientDetailsEntity {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  createdAt: string;
+  deals: ClientDealDetailed[];
+}
+
 export interface CreateClientPayload {
   fullName: string;
   phone: string;
   email?: string | null;
+}
+
+async function parseError(res: Response, fallback: string): Promise<never> {
+  const text = await res.text().catch(() => '');
+
+  if (!text) {
+    throw new Error(fallback);
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) {
+      throw new Error(parsed.message);
+    }
+
+    if (Array.isArray(parsed?.message) && parsed.message.length) {
+      throw new Error(parsed.message.join(', '));
+    }
+
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) {
+      throw new Error(parsed.error);
+    }
+
+    throw new Error(text);
+  } catch {
+    throw new Error(text || fallback);
+  }
 }
 
 export async function fetchClients(): Promise<Client[]> {
@@ -41,7 +137,22 @@ export async function fetchClients(): Promise<Client[]> {
   });
 
   if (!res.ok) {
-    throw new Error('Не удалось загрузить список клиентов');
+    await parseError(res, 'Не удалось загрузить список клиентов');
+  }
+
+  return res.json();
+}
+
+export async function fetchClientById(id: string): Promise<ClientDetailsEntity> {
+  const res = await fetch(`${API_URL}/clients/${id}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!res.ok) {
+    await parseError(res, 'Не удалось загрузить карточку клиента');
   }
 
   return res.json();
@@ -60,8 +171,7 @@ export async function createClient(
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Ошибка при создании клиента: ${text}`);
+    await parseError(res, 'Ошибка при создании клиента');
   }
 
   return res.json();

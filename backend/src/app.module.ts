@@ -1,4 +1,3 @@
-// backend/src/app.module.ts
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
@@ -12,6 +11,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { DocumentTemplatesModule } from './document-templates/document-templates.module';
+import { PaymentsModule } from './payments/payments.module';
+import { DemoDisplaysModule } from './demo-displays/demo-displays.module';
+import { Project3DAssetsModule } from './project-3d-assets/project-3d-assets.module';
+import { Project3DBindingsModule } from './project-3d-bindings/project-3d-bindings.module';
+import { ThreeDWorkspaceAccessModule } from './three-d-workspace-access/three-d-workspace-access.module';
 
 @Module({
   imports: [
@@ -19,12 +23,17 @@ import { DocumentTemplatesModule } from './document-templates/document-templates
     AuthModule,
     UsersModule,
     ProjectsModule,
+    ThreeDWorkspaceAccessModule,
+    Project3DAssetsModule,
+    Project3DBindingsModule,
     UnitsModule,
     DealsModule,
     DocumentsModule,
     ClientsModule,
     ReportsModule,
     DocumentTemplatesModule,
+    PaymentsModule,
+    DemoDisplaysModule,
   ],
   controllers: [AppController],
   providers: [AppService],

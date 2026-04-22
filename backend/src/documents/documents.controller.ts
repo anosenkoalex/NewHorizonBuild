@@ -10,19 +10,18 @@ import {
   Req,
   UnauthorizedException,
 } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import {
   DocumentsService,
   FindDocumentsFilters,
 } from './documents.service.js';
 import { CreateDocumentDto } from './dto/create-document.dto.js';
 import { GenerateFromTemplateDto } from './dto/generate-from-template.dto.js';
-
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
-import { UserRole } from '@prisma/client';
 
 @Controller('documents')
-@UseGuards(JwtAuthGuard) // все ручки только с валидным JWT
+@UseGuards(JwtAuthGuard)
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
@@ -56,14 +55,14 @@ export class DocumentsController {
 
     if (from) {
       const fromDate = new Date(from);
-      if (!isNaN(fromDate.getTime())) {
+      if (!Number.isNaN(fromDate.getTime())) {
         filters.from = fromDate;
       }
     }
 
     if (to) {
       const toDate = new Date(to);
-      if (!isNaN(toDate.getTime())) {
+      if (!Number.isNaN(toDate.getTime())) {
         filters.to = toDate;
       }
     }
@@ -92,10 +91,12 @@ export class DocumentsController {
   @Patch(':id/sign')
   @Roles(UserRole.ADMIN, UserRole.SALES_HEAD, UserRole.LEGAL)
   async signDocument(@Param('id') id: string, @Req() req: any) {
-    const userId = req.user?.id as string | undefined;
+    const userId = req.user?.userId as string | undefined;
+
     if (!userId) {
       throw new UnauthorizedException('Не удалось определить пользователя');
     }
+
     return this.documentsService.signDocument(id, userId);
   }
 }

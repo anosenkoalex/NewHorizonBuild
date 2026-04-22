@@ -8,38 +8,82 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
 import { UserRole } from '@prisma/client';
+import * as jwt from 'jsonwebtoken';
+
+type JwtPayloadLike = {
+  sub?: string;
+  id?: string;
+  userId?: string;
+  role?: UserRole;
+};
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
+  private getUserFromRequestOrToken(request: any): {
+    role?: UserRole;
+    email?: string;
+    userId?: string;
+  } | undefined {
+    if (request.user) {
+      return request.user;
+    }
+
+    const authHeader = request.headers?.authorization;
+    if (!authHeader || typeof authHeader !== 'string') {
+      return undefined;
+    }
+
+    const [type, token] = authHeader.split(' ');
+    if (type !== 'Bearer' || !token) {
+      return undefined;
+    }
+
+    try {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'dev-secret',
+      ) as JwtPayloadLike;
+
+      return {
+        userId: decoded.sub ?? decoded.id ?? decoded.userId,
+        role: decoded.role,
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
   canActivate(context: ExecutionContext): boolean {
-    // Смотрим, есть ли вообще какие-то роли на хендлере/контроллере
     const requiredRoles =
       this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
         context.getHandler(),
         context.getClass(),
       ]);
 
-    // ***Если ролей не задано — НИЧЕГО не ограничиваем, пропускаем всех.***
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest();
-    const user = request.user as { role?: UserRole } | undefined;
+    const user = this.getUserFromRequestOrToken(request);
 
-    // Если на ручке роли есть, но пользователя нет — рубим
+    console.log('ROLES DEBUG', {
+      path: request.url,
+      requiredRoles,
+      user,
+      authHeader: request.headers?.authorization ?? null,
+    });
+
     if (!user || !user.role) {
       throw new ForbiddenException('Forbidden resource');
     }
 
-    // Если пользователь есть, но его роль не в списке — тоже рубим
     if (!requiredRoles.includes(user.role)) {
       throw new ForbiddenException('Forbidden resource');
     }
 
-    // Всё ок, доступ разрешён
     return true;
   }
 }

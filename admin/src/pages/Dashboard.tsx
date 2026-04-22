@@ -41,7 +41,6 @@ const Dashboard: React.FC = () => {
     const now = new Date();
 
     if (period === 'CUSTOM') {
-      // Для кастомного периода используем то, что ввёл пользователь
       const from = customFrom || undefined;
       const to = customTo || undefined;
       return { from, to };
@@ -64,8 +63,8 @@ const Dashboard: React.FC = () => {
     }
 
     if (period === 'QUARTER') {
-      const month = now.getMonth(); // 0–11
-      const quarterIndex = Math.floor(month / 3); // 0,1,2,3
+      const month = now.getMonth();
+      const quarterIndex = Math.floor(month / 3);
       const quarterStartMonth = quarterIndex * 3;
       const startOfQuarter = new Date(now.getFullYear(), quarterStartMonth, 1);
 
@@ -96,7 +95,6 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    // Перезапрашиваем данные при смене пресета или дат
     void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, customFrom, customTo]);
@@ -135,24 +133,73 @@ const Dashboard: React.FC = () => {
   const totalUnits = summary?.totalUnits ?? 0;
   const unitsByStatus = summary?.unitsByStatus;
 
+  const containerStyle: React.CSSProperties = {
+    padding: '0 24px 32px',
+    maxWidth: 1280,
+    margin: '0 auto',
+    color: 'var(--nh-text-main)',
+  };
+
+  const sectionCard: React.CSSProperties = {
+    borderRadius: 16,
+    background:
+      'radial-gradient(circle at top left, var(--nh-accent-soft), transparent 55%), var(--nh-bg-elevated)',
+    color: 'var(--nh-text-main)',
+    padding: 20,
+    boxShadow: '0 14px 32px rgba(15,23,42,0.35)',
+    marginBottom: 24,
+    border: '1px solid var(--nh-border-subtle)',
+  };
+
   const cardStyle: React.CSSProperties = {
-    flex: '1 1 240px',
-    padding: '16px 20px',
-    borderRadius: 12,
-    backgroundColor: '#0f172a',
-    color: 'white',
-    boxShadow: '0 8px 20px rgba(15,23,42,0.35)',
+    flex: '1 1 230px',
+    padding: '16px 18px',
+    borderRadius: 14,
+    background:
+      'radial-gradient(circle at top left, var(--nh-accent-soft), transparent 55%), var(--nh-bg-elevated)',
+    color: 'var(--nh-text-main)',
+    boxShadow: '0 10px 26px rgba(15,23,42,0.3)',
+    border: '1px solid var(--nh-border-subtle)',
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 13,
+    fontSize: 12,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
     opacity: 0.7,
-    marginBottom: 4,
+    marginBottom: 6,
   };
 
   const valueStyle: React.CSSProperties = {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 600,
+    marginBottom: 4,
+  };
+
+  const subValueStyle: React.CSSProperties = {
+    fontSize: 12,
+    opacity: 0.8,
+  };
+
+  const tableHeadCell: React.CSSProperties = {
+    textAlign: 'left',
+    padding: '6px 8px',
+    fontSize: 12,
+    fontWeight: 500,
+    color: 'var(--nh-text-muted)',
+    borderBottom: '1px solid var(--nh-border-subtle)',
+  };
+
+  const tableRowCellLeft: React.CSSProperties = {
+    borderBottom: '1px solid rgba(148,163,184,0.25)',
+    padding: '6px 8px',
+    fontSize: 13,
+  };
+
+  const tableRowCellRight: React.CSSProperties = {
+    ...tableRowCellLeft,
+    textAlign: 'right' as const,
+    fontVariantNumeric: 'tabular-nums',
   };
 
   const fmtNumber = (n: number) =>
@@ -200,17 +247,18 @@ const Dashboard: React.FC = () => {
   const periodControlsWrapper: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: 12,
-    margin: '16px 0 8px',
+    gap: 10,
+    margin: '12px 0 6px',
     flexWrap: 'wrap',
   };
 
   const pillBase: React.CSSProperties = {
     padding: '6px 12px',
     borderRadius: 999,
-    border: '1px solid #cbd5e1',
-    backgroundColor: '#f8fafc',
-    fontSize: 13,
+    border: '1px solid var(--nh-border-subtle)',
+    backgroundColor: 'var(--nh-bg-elevated)',
+    fontSize: 12,
+    color: 'var(--nh-text-main)',
     cursor: 'pointer',
   };
 
@@ -223,9 +271,10 @@ const Dashboard: React.FC = () => {
         onClick={() => setPeriod(value)}
         style={{
           ...pillBase,
-          backgroundColor: active ? '#0f172a' : '#f8fafc',
-          color: active ? '#ffffff' : '#0f172a',
-          borderColor: active ? '#0f172a' : '#cbd5e1',
+          backgroundColor: active ? '#22c55e' : 'var(--nh-bg-elevated)',
+          color: active ? '#022c22' : 'var(--nh-text-main)',
+          borderColor: active ? '#22c55e' : 'var(--nh-border-subtle)',
+          fontWeight: active ? 600 : 400,
         }}
       >
         {label}
@@ -239,17 +288,60 @@ const Dashboard: React.FC = () => {
     unitsByStatus &&
     Object.values(unitsByStatus).reduce((acc, v) => acc + v, 0);
 
-  return (
-    <div style={{ paddingRight: 24 }}>
-      <h1>NewHorizonBuild CRM — Dashboard</h1>
+  const totalManagerRevenue = byManager.reduce(
+    (acc, m) => acc + m.revenue,
+    0,
+  );
 
-      {/* Блок выбора периода */}
-      <section>
+  const avgCheck =
+    totalDeals > 0 ? Math.round(totalRevenue / totalDeals) : 0;
+
+  return (
+    <div style={containerStyle}>
+      {/* Топовый заголовок дашборда */}
+      <header style={{ margin: '18px 0 16px' }}>
+        <div
+          style={{
+            fontSize: 12,
+            textTransform: 'uppercase',
+            opacity: 0.6,
+            color: 'var(--nh-text-muted)',
+          }}
+        >
+          NewHorizonBuild CRM
+        </div>
+        <h1
+          style={{
+            margin: '4px 0 4px',
+            fontSize: 26,
+            fontWeight: 700,
+            letterSpacing: 0.3,
+          }}
+        >
+          Обзор продаж и объектов
+        </h1>
+        <div
+          style={{
+            fontSize: 13,
+            opacity: 0.75,
+            color: 'var(--nh-text-muted)',
+          }}
+        >
+          {currentPeriodLabel}
+          {from && to ? ` · ${from} — ${to}` : ''}
+          {summary && totalUnits > 0
+            ? ` · Всего юнитов: ${fmtNumber(totalUnits)}`
+            : ''}
+        </div>
+      </header>
+
+      {/* Период + быстрые инсайты */}
+      <section style={{ ...sectionCard, paddingBottom: 18 }}>
         <div style={periodControlsWrapper}>
-          <span style={{ fontSize: 13, opacity: 0.8 }}>Период:</span>
+          <span style={{ fontSize: 12, opacity: 0.7 }}>Период:</span>
           {periodButton('YEAR', 'Этот год')}
-          {periodButton('QUARTER', 'Этот квартал')}
-          {periodButton('MONTH', 'Этот месяц')}
+          {periodButton('QUARTER', 'Квартал')}
+          {periodButton('MONTH', 'Месяц')}
           {periodButton('CUSTOM', 'Произвольный')}
         </div>
 
@@ -257,28 +349,43 @@ const Dashboard: React.FC = () => {
           <div
             style={{
               display: 'flex',
-              gap: 12,
+              gap: 10,
               alignItems: 'center',
               flexWrap: 'wrap',
-              marginBottom: 8,
+              marginBottom: 6,
+              marginTop: 6,
             }}
           >
-            <label style={{ fontSize: 13 }}>
+            <label style={{ fontSize: 12 }}>
               C:{' '}
               <input
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: 13 }}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  borderRadius: 8,
+                  border: '1px solid var(--nh-border-subtle)',
+                  backgroundColor: 'var(--nh-bg-main)',
+                  color: 'var(--nh-text-main)',
+                }}
               />
             </label>
-            <label style={{ fontSize: 13 }}>
+            <label style={{ fontSize: 12 }}>
               По:{' '}
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: 13 }}
+                style={{
+                  padding: '4px 8px',
+                  fontSize: 12,
+                  borderRadius: 8,
+                  border: '1px solid var(--nh-border-subtle)',
+                  backgroundColor: 'var(--nh-bg-main)',
+                  color: 'var(--nh-text-main)',
+                }}
               />
             </label>
             <button
@@ -286,9 +393,10 @@ const Dashboard: React.FC = () => {
               onClick={loadData}
               style={{
                 ...pillBase,
-                backgroundColor: '#0f172a',
-                color: '#ffffff',
-                borderColor: '#0f172a',
+                backgroundColor: '#22c55e',
+                color: '#022c22',
+                borderColor: '#22c55e',
+                fontWeight: 600,
               }}
             >
               Обновить
@@ -296,312 +404,366 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 8 }}>
-          Выбранный период: {currentPeriodLabel}
-          {from && to ? ` (${from} — ${to})` : null}
+        <div
+          style={{
+            fontSize: 12,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
+            marginTop: 4,
+            color: 'var(--nh-text-muted)',
+          }}
+        >
+          {loading && data && <span>Обновляем данные…</span>}
+          {error && data && (
+            <span style={{ color: 'var(--nh-danger)' }}>
+              Ошибка при обновлении: {error}
+            </span>
+          )}
         </div>
-
-        {loading && data && (
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Обновляем данные…</div>
-        )}
-        {error && data && (
-          <div style={{ fontSize: 12, color: '#b91c1c' }}>
-            Ошибка при обновлении: {error}
-          </div>
-        )}
       </section>
 
-      {/* Верхние карточки */}
-      <div
+      {/* ВЕРХНИЙ РЯД КАРТОЧЕК */}
+      <section
         style={{
+          marginBottom: 24,
           display: 'flex',
           gap: 16,
-          margin: '20px 0 32px',
           flexWrap: 'wrap',
         }}
       >
         <div style={cardStyle}>
-          <div style={labelStyle}>Всего объектов</div>
+          <div style={labelStyle}>Всего юнитов</div>
           <div style={valueStyle}>
             {summary ? fmtNumber(totalUnits) : '—'}
+          </div>
+          <div style={subValueStyle}>
+            {summary ? 'Вся база объектов застройщика' : 'Загрузка...'}
           </div>
         </div>
 
         <div style={cardStyle}>
           <div style={labelStyle}>Сделок за период</div>
           <div style={valueStyle}>{totalDeals}</div>
+          <div style={subValueStyle}>
+            Включая продажи, рассрочки и долевое участие
+          </div>
         </div>
 
         <div style={cardStyle}>
-          <div style={labelStyle}>Общая выручка</div>
+          <div style={labelStyle}>Общая выручка за период</div>
           <div style={valueStyle}>{fmtMoney(totalRevenue)}</div>
+          <div style={subValueStyle}>По всем типам сделок</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={labelStyle}>Средний чек за период</div>
+          <div style={valueStyle}>
+            {totalDeals > 0 ? fmtMoney(avgCheck) : '—'}
+          </div>
+          <div style={subValueStyle}>
+            Выручка / количество сделок за выбранный период
+          </div>
         </div>
 
         <div style={cardStyle}>
           <div style={labelStyle}>Продано квартир</div>
           <div style={valueStyle}>{apartments.count}</div>
+          <div style={subValueStyle}>Квартиры в завершённых сделках</div>
         </div>
 
         <div style={cardStyle}>
           <div style={labelStyle}>Продано коммерческих объектов</div>
           <div style={valueStyle}>{commercial.count}</div>
+          <div style={subValueStyle}>Офисы, торговые площади и т.п.</div>
         </div>
-      </div>
+      </section>
 
-      {/* Статусы объектов */}
-      <section style={{ marginBottom: 32 }}>
-        <h2>Статусы объектов</h2>
+      {/* БЛОК: Статусы + типы недвижимости */}
+      <section style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {/* Статусы */}
+        <div style={{ ...sectionCard, flex: '1 1 320px' }}>
+          <h2 style={{ fontSize: 16, marginBottom: 8 }}>Статусы объектов</h2>
 
-        {!summary && summaryError && (
-          <p style={{ marginTop: 8, color: '#b91c1c', fontSize: 13 }}>
-            {summaryError}
-          </p>
-        )}
+          {!summary && summaryError && (
+            <p
+              style={{
+                marginTop: 8,
+                color: 'var(--nh-danger)',
+                fontSize: 13,
+              }}
+            >
+              {summaryError}
+            </p>
+          )}
 
-        {summary && totalUnitsForBar && totalUnitsForBar > 0 && (
-          <div
+          {summary && totalUnitsForBar && totalUnitsForBar > 0 && (
+            <>
+              <div
+                style={{
+                  marginTop: 10,
+                  marginBottom: 10,
+                  height: 18,
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                  display: 'flex',
+                  backgroundColor: 'var(--nh-bg-main)',
+                  border: '1px solid var(--nh-border-subtle)',
+                }}
+              >
+                {statusOrder.map(({ status }) => {
+                  const count = unitsByStatus?.[status] ?? 0;
+                  if (!count) return null;
+                  const widthPercent = (count / totalUnitsForBar) * 100;
+
+                  const bg =
+                    status === 'FREE'
+                      ? '#22c55e'
+                      : status === 'RESERVED'
+                      ? '#facc15'
+                      : status === 'SOLD'
+                      ? '#ef4444'
+                      : status === 'INSTALLMENT'
+                      ? '#3b82f6'
+                      : '#a855f7';
+
+                  return (
+                    <div
+                      key={status}
+                      style={{
+                        width: `${widthPercent}%`,
+                        backgroundColor: bg,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  opacity: 0.7,
+                  color: 'var(--nh-text-muted)',
+                  marginBottom: 8,
+                }}
+              >
+                Распределение всех юнитов по статусам (100% = вся база).
+              </div>
+            </>
+          )}
+
+          {summary && (
+            <table
+              style={{
+                borderCollapse: 'collapse',
+                marginTop: 4,
+                width: '100%',
+              }}
+            >
+              <thead>
+                <tr>
+                  <th style={tableHeadCell}>Статус</th>
+                  <th style={{ ...tableHeadCell, textAlign: 'right' }}>
+                    Кол-во
+                  </th>
+                  <th style={{ ...tableHeadCell, textAlign: 'right' }}>
+                    Доля
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {statusOrder.map(({ status, label }) => {
+                  const count = unitsByStatus?.[status] ?? 0;
+                  const pct =
+                    totalUnitsForBar && totalUnitsForBar > 0
+                      ? (count / totalUnitsForBar) * 100
+                      : 0;
+
+                  return (
+                    <tr key={status}>
+                      <td style={tableRowCellLeft}>{label}</td>
+                      <td style={tableRowCellRight}>{count}</td>
+                      <td style={tableRowCellRight}>
+                        {pct > 0 ? `${pct.toFixed(1)}%` : '0%'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+
+          {!summary && !summaryError && (
+            <p
+              style={{
+                marginTop: 8,
+                fontSize: 13,
+                color: 'var(--nh-text-muted)',
+              }}
+            >
+              Загрузка сводки по объектам…
+            </p>
+          )}
+        </div>
+
+        {/* Тип недвижимости */}
+        <div style={{ ...sectionCard, flex: '1 1 320px' }}>
+          <h2 style={{ fontSize: 16, marginBottom: 8 }}>
+            Разбивка по типу недвижимости
+          </h2>
+          <table
             style={{
-              marginTop: 12,
-              marginBottom: 12,
-              height: 18,
-              borderRadius: 999,
-              overflow: 'hidden',
-              display: 'flex',
-              backgroundColor: '#e5e7eb',
+              borderCollapse: 'collapse',
+              marginTop: 4,
+              width: '100%',
             }}
           >
-            {statusOrder.map(({ status }) => {
-              const count = unitsByStatus?.[status] ?? 0;
-              if (!count) return null;
-              const widthPercent = (count / totalUnitsForBar) * 100;
-
-              const bg =
-                status === 'FREE'
-                  ? '#22c55e'
-                  : status === 'RESERVED'
-                  ? '#facc15'
-                  : status === 'SOLD'
-                  ? '#ef4444'
-                  : status === 'INSTALLMENT'
-                  ? '#3b82f6'
-                  : '#a855f7';
-
-              return (
-                <div
-                  key={status}
-                  style={{
-                    width: `${widthPercent}%`,
-                    backgroundColor: bg,
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {summary && (
-          <table style={{ borderCollapse: 'collapse', marginTop: 8 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', padding: '6px 8px' }}>
-                  Статус
-                </th>
-                <th style={{ textAlign: 'right', padding: '6px 8px' }}>
-                  Кол-во
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {statusOrder.map(({ status, label }) => (
-                <tr key={status}>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                    }}
-                  >
-                    {label}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {unitsByStatus?.[status] ?? 0}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {!summary && !summaryError && (
-          <p style={{ marginTop: 8, fontSize: 13, opacity: 0.7 }}>
-            Загрузка сводки по объектам…
-          </p>
-        )}
-      </section>
-
-      {/* Разбивка по типу недвижимости */}
-      <section style={{ marginBottom: 32 }}>
-        <h2>Разбивка по типу недвижимости</h2>
-        <table style={{ borderCollapse: 'collapse', marginTop: 12 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Тип</th>
-              <th style={{ textAlign: 'right', padding: '6px 8px' }}>Сделок</th>
-              <th style={{ textAlign: 'right', padding: '6px 8px' }}>
-                Выручка
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {unitTypeOrder.map(({ type, label }) => {
-              const stats = getUnitStats(byUnitType, type);
-              return (
-                <tr key={type}>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                    }}
-                  >
-                    {label}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {stats.count}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {fmtMoney(stats.revenue)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
-
-      {/* Разбивка по типу сделки */}
-      <section style={{ marginBottom: 32 }}>
-        <h2>Разбивка по типу сделки</h2>
-        <table style={{ borderCollapse: 'collapse', marginTop: 12 }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left', padding: '6px 8px' }}>
-                Тип сделки
-              </th>
-              <th style={{ textAlign: 'right', padding: '6px 8px' }}>Сделок</th>
-              <th style={{ textAlign: 'right', padding: '6px 8px' }}>
-                Выручка
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {dealTypeOrder.map(({ type, label }) => {
-              const stats = getDealStats(byDealType, type);
-              return (
-                <tr key={type}>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                    }}
-                  >
-                    {label}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {stats.count}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {fmtMoney(stats.revenue)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </section>
-
-      {/* Топ менеджеров */}
-      <section>
-        <h2>Производительность менеджеров</h2>
-        {byManager.length === 0 ? (
-          <p style={{ marginTop: 8 }}>За выбранный период нет сделок.</p>
-        ) : (
-          <table style={{ borderCollapse: 'collapse', marginTop: 12 }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '6px 8px' }}>
-                  Менеджер
-                </th>
-                <th style={{ textAlign: 'right', padding: '6px 8px' }}>
+                <th style={tableHeadCell}>Тип</th>
+                <th style={{ ...tableHeadCell, textAlign: 'right' }}>
                   Сделок
                 </th>
-                <th style={{ textAlign: 'right', padding: '6px 8px' }}>
+                <th style={{ ...tableHeadCell, textAlign: 'right' }}>
                   Выручка
                 </th>
               </tr>
             </thead>
             <tbody>
-              {byManager.map((m: ManagerRow) => (
-                <tr key={m.managerId}>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                    }}
-                  >
-                    {m.managerName}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {m.dealsCount}
-                  </td>
-                  <td
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      padding: '6px 8px',
-                      textAlign: 'right',
-                    }}
-                  >
-                    {fmtMoney(m.revenue)}
-                  </td>
-                </tr>
-              ))}
+              {unitTypeOrder.map(({ type, label }) => {
+                const stats = getUnitStats(byUnitType, type);
+                return (
+                  <tr key={type}>
+                    <td style={tableRowCellLeft}>{label}</td>
+                    <td style={tableRowCellRight}>{stats.count}</td>
+                    <td style={tableRowCellRight}>
+                      {fmtMoney(stats.revenue)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        )}
+        </div>
+      </section>
+
+      {/* БЛОК: Тип сделок + менеджеры */}
+      <section style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {/* Типы сделок */}
+        <div style={{ ...sectionCard, flex: '1 1 320px' }}>
+          <h2 style={{ fontSize: 16, marginBottom: 8 }}>
+            Разбивка по типу сделки
+          </h2>
+          <table
+            style={{
+              borderCollapse: 'collapse',
+              marginTop: 4,
+              width: '100%',
+            }}
+          >
+            <thead>
+              <tr>
+                <th style={tableHeadCell}>Тип сделки</th>
+                <th style={{ ...tableHeadCell, textAlign: 'right' }}>
+                  Сделок
+                </th>
+                <th style={{ ...tableHeadCell, textAlign: 'right' }}>
+                  Выручка
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {dealTypeOrder.map(({ type, label }) => {
+                const stats = getDealStats(byDealType, type);
+                return (
+                  <tr key={type}>
+                    <td style={tableRowCellLeft}>{label}</td>
+                    <td style={tableRowCellRight}>{stats.count}</td>
+                    <td style={tableRowCellRight}>
+                      {fmtMoney(stats.revenue)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Менеджеры */}
+        <div style={{ ...sectionCard, flex: '1 1 320px' }}>
+          <h2 style={{ fontSize: 16, marginBottom: 8 }}>
+            Производительность менеджеров
+          </h2>
+
+          {byManager.length === 0 ? (
+            <p
+              style={{
+                marginTop: 8,
+                fontSize: 13,
+                color: 'var(--nh-text-muted)',
+              }}
+            >
+              За выбранный период нет сделок.
+            </p>
+          ) : (
+            <div style={{ marginTop: 6 }}>
+              {byManager.map((m: ManagerRow) => {
+                const share =
+                  totalManagerRevenue > 0
+                    ? (m.revenue / totalManagerRevenue) * 100
+                    : 0;
+
+                return (
+                  <div
+                    key={m.managerId}
+                    style={{ marginBottom: 10, paddingBottom: 2 }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        marginBottom: 2,
+                      }}
+                    >
+                      <span>{m.managerName}</span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {fmtMoney(m.revenue)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 8,
+                        borderRadius: 999,
+                        backgroundColor: 'var(--nh-bg-main)',
+                        overflow: 'hidden',
+                        border: '1px solid var(--nh-border-subtle)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${share || 0}%`,
+                          height: '100%',
+                          background:
+                            'linear-gradient(to right, #22c55e, #a3e635)',
+                        }}
+                      />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        opacity: 0.7,
+                        color: 'var(--nh-text-muted)',
+                        marginTop: 2,
+                      }}
+                    >
+                      Сделок: {m.dealsCount}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

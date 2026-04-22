@@ -11,57 +11,121 @@ export interface DocumentTemplate {
   updatedAt: string;
 }
 
+export interface CreateDocumentTemplatePayload {
+  name: string;
+  type: string;
+  content: string;
+}
+
+export interface UpdateDocumentTemplatePayload {
+  name?: string;
+  type?: string;
+  content?: string;
+}
+
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem(STORAGE_TOKEN_KEY);
   if (!token) return {};
+
   return {
     Authorization: `Bearer ${token}`,
   };
 }
 
-export async function fetchDocumentTemplates(): Promise<DocumentTemplate[]> {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...getAuthHeaders(),
-  };
+async function parseError(
+  res: Response,
+  fallback: string,
+): Promise<never> {
+  const text = await res.text().catch(() => '');
+  throw new Error(
+    text || `${fallback} (status ${res.status})`,
+  );
+}
 
-  const res = await fetch(`${API_URL}/document-templates`, { headers });
+export async function fetchDocumentTemplates(): Promise<DocumentTemplate[]> {
+  const res = await fetch(`${API_URL}/document-templates`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `Не удалось загрузить шаблоны документов (status ${res.status}${
-        text ? `, ${text}` : ''
-      })`,
-    );
+    await parseError(res, 'Не удалось загрузить шаблоны документов');
   }
 
   return res.json();
 }
 
-export async function createDocumentTemplate(payload: {
-  name: string;
-  type: string;
-  content: string;
-}): Promise<DocumentTemplate> {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...getAuthHeaders(),
-  };
+export async function fetchDocumentTemplateById(
+  id: string,
+): Promise<DocumentTemplate> {
+  const res = await fetch(`${API_URL}/document-templates/${id}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
 
+  if (!res.ok) {
+    await parseError(res, 'Не удалось загрузить шаблон документа');
+  }
+
+  return res.json();
+}
+
+export async function createDocumentTemplate(
+  payload: CreateDocumentTemplatePayload,
+): Promise<DocumentTemplate> {
   const res = await fetch(`${API_URL}/document-templates`, {
     method: 'POST',
-    headers,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `Ошибка при создании шаблона (status ${res.status}${
-        text ? `, ${text}` : ''
-      })`,
-    );
+    await parseError(res, 'Ошибка при создании шаблона');
+  }
+
+  return res.json();
+}
+
+export async function updateDocumentTemplate(
+  id: string,
+  payload: UpdateDocumentTemplatePayload,
+): Promise<DocumentTemplate> {
+  const res = await fetch(`${API_URL}/document-templates/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    await parseError(res, 'Ошибка при обновлении шаблона');
+  }
+
+  return res.json();
+}
+
+export async function deleteDocumentTemplate(
+  id: string,
+): Promise<DocumentTemplate> {
+  const res = await fetch(`${API_URL}/document-templates/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+  });
+
+  if (!res.ok) {
+    await parseError(res, 'Ошибка при удалении шаблона');
   }
 
   return res.json();

@@ -1,15 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ClientsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Список всех клиентов (для CRM этого более чем достаточно)
   findAll() {
     return this.prisma.client.findMany({
       include: {
-        deals: true,
+        deals: {
+          select: {
+            id: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -17,17 +21,77 @@ export class ClientsService {
     });
   }
 
-  // Один клиент по id (про запас, вдруг пригодится)
-  findOne(id: string) {
-    return this.prisma.client.findUnique({
+  async findOne(id: string) {
+    const client = await this.prisma.client.findUnique({
       where: { id },
       include: {
-        deals: true,
+        deals: {
+          include: {
+            unit: {
+              select: {
+                id: true,
+                number: true,
+                type: true,
+                status: true,
+                area: true,
+                price: true,
+                projectId: true,
+              },
+            },
+            manager: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+            comments: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 5,
+              include: {
+                author: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    role: true,
+                  },
+                },
+              },
+            },
+            statusHistory: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              take: 10,
+              include: {
+                changedBy: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                    role: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
+
+    if (!client) {
+      throw new NotFoundException('Клиент не найден');
+    }
+
+    return client;
   }
 
-  // Базовое создание клиента (сейчас не используется напрямую, но пусть будет)
   create(data: { fullName: string; phone: string; email?: string | null }) {
     return this.prisma.client.create({
       data: {

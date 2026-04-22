@@ -15,16 +15,20 @@ export interface SalesReportFilters {
 export interface SalesReportResponse {
   totalDeals: number;
   totalRevenue: number;
-  byUnitType: {
-    type: UnitType;
-    dealsCount: number;
-    revenue: number;
-  }[];
-  byDealType: {
-    type: DealType;
-    dealsCount: number;
-    revenue: number;
-  }[];
+  byUnitType: Record<
+    UnitType,
+    {
+      count: number;
+      revenue: number;
+    }
+  >;
+  byDealType: Record<
+    DealType,
+    {
+      count: number;
+      revenue: number;
+    }
+  >;
   byManager: {
     managerId: string;
     managerName: string;
@@ -47,7 +51,7 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Отчёт по продажам (для страницы "Отчёты")
+   * Отчёт по продажам (для страницы "Отчёты" и Dashboard)
    */
   async getSalesReport(
     filters: SalesReportFilters,
@@ -73,14 +77,19 @@ export class ReportsService {
     const totalDeals = deals.length;
     let totalRevenue = 0;
 
-    const byUnitTypeMap = new Map<
-      UnitType,
-      { dealsCount: number; revenue: number }
-    >();
-    const byDealTypeMap = new Map<
-      DealType,
-      { dealsCount: number; revenue: number }
-    >();
+    // Инициализируем все типы, чтобы на фронте всегда были ключи
+    const byUnitType: SalesReportResponse['byUnitType'] = {
+      [UnitType.APARTMENT]: { count: 0, revenue: 0 },
+      [UnitType.COMMERCIAL]: { count: 0, revenue: 0 },
+      [UnitType.PARKING]: { count: 0, revenue: 0 },
+    };
+
+    const byDealType: SalesReportResponse['byDealType'] = {
+      [DealType.SALE]: { count: 0, revenue: 0 },
+      [DealType.INSTALLMENT]: { count: 0, revenue: 0 },
+      [DealType.EQUITY]: { count: 0, revenue: 0 },
+    };
+
     const byManagerMap = new Map<
       string,
       {
@@ -98,18 +107,12 @@ export class ReportsService {
       totalRevenue += revenue;
 
       // по типу недвижимости
-      const ut =
-        byUnitTypeMap.get(unitType) ?? { dealsCount: 0, revenue: 0 };
-      ut.dealsCount += 1;
-      ut.revenue += revenue;
-      byUnitTypeMap.set(unitType, ut);
+      byUnitType[unitType].count += 1;
+      byUnitType[unitType].revenue += revenue;
 
       // по типу сделки
-      const dt =
-        byDealTypeMap.get(deal.type) ?? { dealsCount: 0, revenue: 0 };
-      dt.dealsCount += 1;
-      dt.revenue += revenue;
-      byDealTypeMap.set(deal.type, dt);
+      byDealType[deal.type].count += 1;
+      byDealType[deal.type].revenue += revenue;
 
       // по менеджерам
       const managerId = deal.managerId;
@@ -132,14 +135,8 @@ export class ReportsService {
     return {
       totalDeals,
       totalRevenue,
-      byUnitType: Array.from(byUnitTypeMap, ([type, v]) => ({
-        type,
-        ...v,
-      })),
-      byDealType: Array.from(byDealTypeMap, ([type, v]) => ({
-        type,
-        ...v,
-      })),
+      byUnitType,
+      byDealType,
       byManager: Array.from(byManagerMap.values()),
     };
   }

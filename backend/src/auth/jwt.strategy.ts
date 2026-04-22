@@ -1,19 +1,20 @@
 // backend/src/auth/jwt.strategy.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserRole } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface JwtPayload {
-  sub?: string;      // возможный id
-  id?: string;       // возможный id
-  userId?: string;   // возможный id
-  role?: UserRole;   // роль, если кладём её в токен
+  sub?: string; // возможный id
+  id?: string; // возможный id
+  userId?: string; // возможный id
+  role?: UserRole; // роль, если кладём её в токен
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -22,18 +23,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    // Пытаемся вытащить какой-то userId из разных полей,
-    // но если не получится — всё равно пускаем.
-    const userId =
-      payload.sub ??
-      payload.id ??
-      payload.userId ??
-      'unknown';
+    const userId = payload.sub ?? payload.id ?? payload.userId;
+
+    if (!userId) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
 
     // То, что попадёт в request.user
     return {
-      userId,
-      role: payload.role ?? ('VIEWER' as UserRole),
+      userId: user.id,
+      email: user.email,
+      role: user.role,
     };
   }
 }

@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   db:
     image: postgres:16
@@ -11,3 +13,38 @@ services:
       - "5432:5432"
     volumes:
       - ./docker/postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: newhorizonbuild-backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      # Внутри docker-сети хост БД = db
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/postgres?schema=public
+      OWNER_EMAILS: "anosenkoalex@gmail.com"
+      PORT: "3000"
+      # Для демо-домена добавишь сюда свой домен через запятую
+      CORS_ORIGIN: "http://localhost:5173,http://localhost,http://127.0.0.1,http://127.0.0.1:5173"
+    volumes:
+      # чтобы загруженные модели/планировки не терялись при пересборке
+      - ./docker/uploads:/app/uploads
+    expose:
+      - "3000"
+
+  web:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "/api"
+        VITE_3D_OWNER_EMAILS: "anosenkoalex@gmail.com"
+    container_name: newhorizonbuild-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"

@@ -1,0 +1,19 @@
+# admin/.dockerignore
+node_modules
+dist
+.vite
+.cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+
+# env/local
+.env
+.env.*
+
+# git/editor
+.git
+.vscode
+.idea

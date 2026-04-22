@@ -19,6 +19,13 @@ export interface UserItem {
   createdAt: string;
 }
 
+export interface CreateUserPayload {
+  email: string;
+  fullName: string;
+  password: string;
+  role: UserRole;
+}
+
 export const ALL_ROLES: UserRole[] = [
   'ADMIN',
   'MANAGER',
@@ -35,13 +42,40 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   VIEWER: 'Только просмотр',
 };
 
-// всегда возвращаем простой объект headers
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem(STORAGE_TOKEN_KEY);
   if (!token) return {};
   return {
     Authorization: `Bearer ${token}`,
   };
+}
+
+async function parseError(res: Response, fallback: string): Promise<never> {
+  const text = await res.text().catch(() => '');
+
+  if (!text) {
+    throw new Error(fallback);
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) {
+      throw new Error(parsed.message);
+    }
+
+    if (Array.isArray(parsed?.message) && parsed.message.length) {
+      throw new Error(parsed.message.join(', '));
+    }
+
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) {
+      throw new Error(parsed.error);
+    }
+
+    throw new Error(text);
+  } catch {
+    throw new Error(text || fallback);
+  }
 }
 
 export async function fetchUsers(): Promise<UserItem[]> {
@@ -53,12 +87,33 @@ export async function fetchUsers(): Promise<UserItem[]> {
   const res = await fetch(`${API_URL}/users`, { headers });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `Не удалось загрузить пользователей (status ${res.status}${
-        text ? `, ${text}` : ''
-      })`,
-    );
+    await parseError(res, 'Не удалось загрузить пользователей');
+  }
+
+  return res.json();
+}
+
+export async function createUser(
+  payload: CreateUserPayload,
+): Promise<UserItem> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...getAuthHeaders(),
+  };
+
+  const res = await fetch(`${API_URL}/users`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      email: String(payload.email ?? '').trim().toLowerCase(),
+      fullName: String(payload.fullName ?? '').trim(),
+      password: String(payload.password ?? ''),
+      role: payload.role,
+    }),
+  });
+
+  if (!res.ok) {
+    await parseError(res, 'Не удалось создать пользователя');
   }
 
   return res.json();
@@ -80,12 +135,7 @@ export async function updateUserRole(
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(
-      `Не удалось изменить роль (status ${res.status}${
-        text ? `, ${text}` : ''
-      })`,
-    );
+    await parseError(res, 'Не удалось изменить роль');
   }
 
   return res.json();

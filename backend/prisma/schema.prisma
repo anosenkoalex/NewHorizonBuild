@@ -42,6 +42,58 @@ enum DealStatus {
   CANCELED
 }
 
+enum PaymentStatus {
+  PLANNED
+  PAID
+  OVERDUE
+}
+
+enum AssetFileKind {
+  SOURCE_3D
+  CONVERTED_3D
+  PREVIEW_IMAGE
+  PLAN_IMAGE
+  TEXTURE
+  MATERIAL
+  ARCHIVE
+  OTHER
+}
+
+enum Project3DAssetStatus {
+  DRAFT
+  PROCESSING
+  READY
+  FAILED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ImportJobType {
+  MODEL_UPLOAD
+  MODEL_PARSE
+  MODEL_CONVERT
+  MODEL_NORMALIZE
+  MODEL_PREVIEW_RENDER
+  UNITS_IMPORT
+  PLANS_IMPORT
+}
+
+enum ImportJobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELED
+}
+
+enum Project3DBindingTargetType {
+  PROJECT
+  BUILDING
+  SECTION
+  FLOOR
+  UNIT
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -50,28 +102,95 @@ model User {
   role         UserRole @default(VIEWER)
   deals        Deal[]   @relation("UserDeals")
 
-  // Документы, которые пользователь подписал
+  /// Комментарии пользователя по сделкам
+  dealComments DealComment[] @relation("DealCommentAuthor")
+
+  /// История изменения статусов, выполненная пользователем
+  changedDealStatuses DealStatusHistory[] @relation("DealStatusHistoryChangedBy")
+
+  /// Демонстрационный экран, к которому привязан сотрудник как источник показа.
+  /// Один сотрудник -> максимум один активный demo display.
+  demoDisplay DemoDisplay? @relation("DemoDisplayPresenter")
+
+  /// Документы, которые пользователь подписал
   signedDocuments Document[] @relation("UserSignedDocuments")
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Отдельный скрытый контур доступа в 3D workspace.
+/// Не зависит от обычных ролей CRM и не обязан отображаться в разделе Users.
+model ThreeDWorkspaceAccess {
+  id    String @id @default(cuid())
+  email String @unique
+
+  /// Отображаемое имя для внутреннего owner/3D-списка
+  fullName String?
+
+  /// Активен ли доступ вообще
+  isActive Boolean @default(true)
+
+  /// Базовый вход в hidden 3D workspace
+  canAccessWorkspace Boolean @default(true)
+
+  /// Права внутри 3D контура
+  canUploadModels          Boolean @default(false)
+  canManageScenes          Boolean @default(false)
+  canConfigureWalkthroughs Boolean @default(false)
+  canManageBindings        Boolean @default(false)
+  canPublish               Boolean @default(false)
+
+  /// Кто может управлять самим списком 3D-доступов
+  canManageAccess Boolean @default(false)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
 }
 
 model Project {
-  id          String     @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
   address     String?
 
-  /// Ссылка на 3D-модель для веб-viewer (GLB/GLTF/и т.п.)
+  /// Runtime-поля для текущего рабочего Viewer.
+  /// Hidden 3D studio может публиковать сюда активный результат.
   threeDModelUrl     String?
-  /// Формат модели: "glb", "gltf", "obj" и т.д.
   threeDModelFormat  String?
-  /// Опциональное превью (картинка) для списка моделей
   threeDPreviewImage String?
 
-  buildings   Building[]
-  units       Unit[]
+  /// Какие 3D-сущности сейчас опубликованы для runtime Viewer
+  published3DAssetId      String?
+  publishedScenePresetId  String?
+  publishedCameraPresetId String?
+
+  buildings Building[]
+  units     Unit[]
+
+  /// Hidden 3D studio layer
+  threeDAssets   Project3DAsset[]        @relation("Project3DAssets")
+  scenePresets   Project3DScenePreset[]  @relation("ProjectScenePresets")
+  cameraPresets  Project3DCameraPreset[] @relation("ProjectCameraPresets")
+  importJobs     ImportJob[]
+  threeDBindings Project3DBinding[]
+
+  published3DAsset      Project3DAsset?        @relation("ProjectPublished3DAsset", fields: [published3DAssetId], references: [id])
+  publishedScenePreset  Project3DScenePreset?  @relation("ProjectPublishedScenePreset", fields: [publishedScenePresetId], references: [id])
+  publishedCameraPreset Project3DCameraPreset? @relation("ProjectPublishedCameraPreset", fields: [publishedCameraPresetId], references: [id])
+
+  /// Демо-экраны, на которых этот проект выбран как текущий
+  demoDisplaysCurrent  DemoDisplay[] @relation("DemoDisplayCurrentProject")
+  /// Демо-экраны, где этот проект используется в автодемонстрации
+  demoDisplaysAutoplay DemoDisplay[] @relation("DemoDisplayAutoplayProject")
+
+  @@index([published3DAssetId])
+  @@index([publishedScenePresetId])
+  @@index([publishedCameraPresetId])
 }
 
 model Building {
@@ -83,15 +202,21 @@ model Building {
   sections       Section[]
   floors         Floor[]
   units          Unit[]
+
+  /// Hidden 3D studio bindings
+  threeDBindings Project3DBinding[]
 }
 
 model Section {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   buildingId String
-  building   Building  @relation(fields: [buildingId], references: [id])
+  building   Building @relation(fields: [buildingId], references: [id])
   name       String
   floors     Floor[]
   units      Unit[]
+
+  /// Hidden 3D studio bindings
+  threeDBindings Project3DBinding[]
 }
 
 model Floor {
@@ -102,34 +227,86 @@ model Floor {
   section    Section? @relation(fields: [sectionId], references: [id])
   number     Int
   units      Unit[]
+
+  /// Hidden 3D studio bindings
+  threeDBindings Project3DBinding[]
 }
 
 model Unit {
-  id              String     @id @default(cuid())
-  type            UnitType
-  projectId       String
-  project         Project    @relation(fields: [projectId], references: [id])
-  buildingId      String
-  building        Building   @relation(fields: [buildingId], references: [id])
-  sectionId       String?
-  section         Section?   @relation(fields: [sectionId], references: [id])
-  floorId         String?
-  floor           Floor?     @relation(fields: [floorId], references: [id])
-  number          String?
-  area            Float?
-  rooms           Int?
-  price           Decimal?
-  status          UnitStatus @default(FREE)
+  id         String     @id @default(cuid())
+  type       UnitType
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id])
+  buildingId String
+  building   Building   @relation(fields: [buildingId], references: [id])
+  sectionId  String?
+  section    Section?   @relation(fields: [sectionId], references: [id])
+  floorId    String?
+  floor      Floor?     @relation(fields: [floorId], references: [id])
+  number     String?
+  area       Float?
+  rooms      Int?
+  price      Decimal?
+  status     UnitStatus @default(FREE)
 
-  /// Ключ элемента в 3D-сцене (для подсветки нужной квартиры)
+  /// Базовый runtime-ключ элемента в 3D-сцене
   modelElementKey String?
 
-  /// Ссылка на 2D-планировку (картинка/схема)
-  planImageUrl    String?
+  /// Базовая 2D-планировка
+  planImageUrl String?
 
-  deals           Deal[]
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  /// Варианты планировок
+  planVariants UnitPlanVariant[]
+
+  /// Hidden 3D studio bindings
+  threeDBindings Project3DBinding[]
+
+  deals     Deal[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Демо-экраны, где этот юнит выбран как текущий
+  demoDisplaysCurrent DemoDisplay[] @relation("DemoDisplayCurrentUnit")
+
+  @@index([projectId])
+  @@index([buildingId])
+  @@index([sectionId])
+  @@index([floorId])
+  @@index([modelElementKey])
+}
+
+model UnitPlanVariant {
+  id     String @id @default(cuid())
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id])
+
+  /// Название варианта: "Планировка А", "Планировка с гардеробной" и т.п.
+  name String
+
+  /// Внутренний код для дизайнеров / 3D
+  code String?
+
+  /// Картинка плана для этого варианта
+  planImageUrl String?
+
+  /// Описание для менеджеров
+  description String?
+
+  /// Площадь, если отличается от базовой
+  area  Float?
+  /// Кол-во комнат, если отличается от базового
+  rooms Int?
+
+  /// Вариант по умолчанию
+  isDefault Boolean @default(false)
+
+  /// Сделки, в которых выбран именно этот вариант
+  deals Deal[] @relation("DealPlanVariant")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitId, isDefault])
 }
 
 model Client {
@@ -143,25 +320,96 @@ model Client {
 }
 
 model Deal {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   unitId    String
-  unit      Unit     @relation(fields: [unitId], references: [id])
+  unit      Unit       @relation(fields: [unitId], references: [id])
   clientId  String
-  client    Client   @relation(fields: [clientId], references: [id])
+  client    Client     @relation(fields: [clientId], references: [id])
   managerId String
-  manager   User     @relation("UserDeals", fields: [managerId], references: [id])
+  manager   User       @relation("UserDeals", fields: [managerId], references: [id])
   type      DealType
   status    DealStatus
-  documents Document[]
+
+  /// Какой вариант планировки выбрал клиент
+  layoutVariantId String?
+  layoutVariant   UnitPlanVariant? @relation("DealPlanVariant", fields: [layoutVariantId], references: [id])
+
+  documents     Document[]
+  payments      Payment[]
+  comments      DealComment[]
+  statusHistory DealStatusHistory[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([unitId])
+  @@index([clientId])
+  @@index([managerId])
+  @@index([layoutVariantId])
+}
+
+model DealComment {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id])
+
+  authorUserId String?
+  author       User?   @relation("DealCommentAuthor", fields: [authorUserId], references: [id])
+
+  text String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([authorUserId])
+  @@index([createdAt])
+}
+
+model DealStatusHistory {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id])
+
+  fromStatus DealStatus?
+  toStatus   DealStatus
+
+  changedByUserId String?
+  changedBy       User?   @relation("DealStatusHistoryChangedBy", fields: [changedByUserId], references: [id])
+
+  comment String?
+
+  createdAt DateTime @default(now())
+
+  @@index([dealId])
+  @@index([changedByUserId])
+  @@index([createdAt])
+}
+
+model Payment {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id])
+
+  dueDate DateTime
+  amount  Decimal
+  status  PaymentStatus @default(PLANNED)
+  paidAt  DateTime?
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([status])
+  @@index([dueDate])
 }
 
 model DocumentTemplate {
   id        String   @id @default(cuid())
-  name      String   // "Договор купли-продажи"
-  type      String   // "CONTRACT", "ACT", "PAYMENT_SCHEDULE" и т.п.
-  content   String   // Текст/HTML с {{client.fullName}}, {{unit.number}} и т.д.
+  name      String
+  type      String
+  content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -169,20 +417,264 @@ model DocumentTemplate {
 }
 
 model Document {
-  id         String   @id @default(cuid())
+  id         String            @id @default(cuid())
   dealId     String
-  deal       Deal     @relation(fields: [dealId], references: [id])
+  deal       Deal              @relation(fields: [dealId], references: [id])
   type       String
-  fileUrl    String?  // может быть пустым, если документ только в content
-  content    String?  // сгенерированный текст/HTML документа
+  fileUrl    String?
+  content    String?
   templateId String?
   template   DocumentTemplate? @relation(fields: [templateId], references: [id])
 
   /// Подпись документа
   signedAt       DateTime?
   signedByUserId String?
-  signedBy       User?    @relation("UserSignedDocuments", fields: [signedByUserId], references: [id])
+  signedBy       User?     @relation("UserSignedDocuments", fields: [signedByUserId], references: [id])
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealId])
+  @@index([templateId])
+  @@index([signedByUserId])
+}
+
+model DemoDisplay {
+  id   String @id @default(cuid())
+  name String
+
+  /// Офис / описание места (например, "Офис на Юнусалиева")
+  office String?
+
+  /// Код подключения для телевизора
+  code String @unique
+
+  /// Активен ли экран вообще
+  isActive Boolean @default(true)
+
+  /// Включён ли demo mode у сотрудника.
+  /// Экран может быть активным и доступным по своей ссылке даже при false —
+  /// тогда ТВ просто показывает standby / idle.
+  demoEnabled Boolean @default(false)
+
+  /// Сотрудник-источник показа
+  presenterUserId String? @unique
+  presenterUser   User?   @relation("DemoDisplayPresenter", fields: [presenterUserId], references: [id])
+
+  /// Если из CRM транслируем конкретный проект и юнит
+  currentProjectId String?
+  currentProject   Project? @relation("DemoDisplayCurrentProject", fields: [currentProjectId], references: [id])
+
+  currentUnitId String?
+  currentUnit   Unit?   @relation("DemoDisplayCurrentUnit", fields: [currentUnitId], references: [id])
+
+  /// Режим автодемонстрации
+  autoplayEnabled   Boolean  @default(false)
+  autoplayProjectId String?
+  autoplayProject   Project? @relation("DemoDisplayAutoplayProject", fields: [autoplayProjectId], references: [id])
+
+  /// Задержка между сменами, секунд
+  autoplayDelaySec Int?
+
+  /// Последняя активность сотрудника во viewer
+  lastViewerActivityAt DateTime?
+
+  /// Последний пинг от телека
+  lastPingAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, demoEnabled])
+  @@index([presenterUserId])
+  @@index([currentProjectId])
+  @@index([currentUnitId])
+  @@index([autoplayProjectId])
+}
+
+model AssetFile {
+  id           String        @id @default(cuid())
+  kind         AssetFileKind
+  originalName String
+  mimeType     String?
+  extension    String?
+  sizeBytes    Int?
+  storagePath  String
+  publicUrl    String?
+  checksum     String?
+  metaJson     Json?
+
+  sourceForAssets  Project3DAsset[] @relation("Project3DAssetSourceFile")
+  outputForAssets  Project3DAsset[] @relation("Project3DAssetOutputFile")
+  previewForAssets Project3DAsset[] @relation("Project3DAssetPreviewFile")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind])
+  @@index([checksum])
+}
+
+model Project3DAsset {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation("Project3DAssets", fields: [projectId], references: [id])
+
+  name         String
+  versionLabel String?
+  sourceFormat String?
+  outputFormat String?
+  status       Project3DAssetStatus @default(DRAFT)
+
+  sourceFileId String?
+  sourceFile   AssetFile? @relation("Project3DAssetSourceFile", fields: [sourceFileId], references: [id])
+
+  outputFileId String?
+  outputFile   AssetFile? @relation("Project3DAssetOutputFile", fields: [outputFileId], references: [id])
+
+  previewFileId String?
+  previewFile   AssetFile? @relation("Project3DAssetPreviewFile", fields: [previewFileId], references: [id])
+
+  normalizationJson Json?
+  diagnosticsJson   Json?
+  notes             String?
+
+  isPublished Boolean @default(false)
+
+  importJobs ImportJob[]
+
+  /// Обратная связь на Project.published3DAsset
+  publishedByProjects Project[] @relation("ProjectPublished3DAsset")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([projectId, status])
+  @@index([projectId, isPublished])
+  @@index([sourceFileId])
+  @@index([outputFileId])
+  @@index([previewFileId])
+}
+
+model Project3DScenePreset {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation("ProjectScenePresets", fields: [projectId], references: [id])
+
+  name        String
+  isDefault   Boolean @default(false)
+  isPublished Boolean @default(false)
+
+  backgroundColor  String?
+  lightingJson     Json?
+  statusColorsJson Json?
+  filtersJson      Json?
+  autoplayJson     Json?
+  uiLayoutJson     Json?
+
+  cameraPresets Project3DCameraPreset[] @relation("ScenePresetCameraPresets")
+
+  /// Обратная связь на Project.publishedScenePreset
+  publishedByProjects Project[] @relation("ProjectPublishedScenePreset")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([projectId, isDefault])
+  @@index([projectId, isPublished])
+}
+
+model Project3DCameraPreset {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation("ProjectCameraPresets", fields: [projectId], references: [id])
+
+  scenePresetId String?
+  scenePreset   Project3DScenePreset? @relation("ScenePresetCameraPresets", fields: [scenePresetId], references: [id])
+
+  name      String
+  isDefault Boolean @default(false)
+
+  positionJson Json
+  targetJson   Json
+  zoom         Float?
+  fov          Float?
+
+  /// Обратная связь на Project.publishedCameraPreset
+  publishedByProjects Project[] @relation("ProjectPublishedCameraPreset")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([projectId, isDefault])
+  @@index([scenePresetId])
+}
+
+model ImportJob {
+  id     String          @id @default(cuid())
+  type   ImportJobType
+  status ImportJobStatus @default(QUEUED)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  project3DAssetId String?
+  project3DAsset   Project3DAsset? @relation(fields: [project3DAssetId], references: [id])
+
+  payloadJson Json?
+  resultJson  Json?
+  errorText   String?
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, status])
+  @@index([projectId])
+  @@index([project3DAssetId])
+}
+
+model Project3DBinding {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+
+  targetType Project3DBindingTargetType
+
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id])
+
+  sectionId String?
+  section   Section? @relation(fields: [sectionId], references: [id])
+
+  floorId String?
+  floor   Floor?  @relation(fields: [floorId], references: [id])
+
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id])
+
+  nodeKey      String
+  nodeName     String?
+  nodePath     String?
+  groupName    String?
+  materialName String?
+
+  isPrimary Boolean @default(true)
+  metaJson  Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([projectId, targetType])
+  @@index([unitId])
+  @@index([buildingId])
+  @@index([sectionId])
+  @@index([floorId])
+  @@index([nodeKey])
 }

@@ -29,7 +29,17 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const STORAGE_TOKEN_KEY = 'nhb_token';
 const STORAGE_USER_KEY = 'nhb_user';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+/**
+ * В Docker/production фронт должен ходить через nginx-прокси на /api,
+ * а не напрямую на :3000. Поэтому дефолт — '/api'.
+ *
+ * Для локальной разработки без nginx можно задать:
+ *   VITE_API_URL=http://localhost:3000
+ */
+const API_URL = (() => {
+  const raw = String((import.meta as any)?.env?.VITE_API_URL ?? '/api').trim();
+  return raw.endsWith('/') ? raw.slice(0, -1) : raw;
+})();
 
 interface AuthProviderProps {
   children: ReactNode;

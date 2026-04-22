@@ -14,30 +14,6 @@ export type UnitStatus =
   | 'EQUITY';
 
 /**
- * То, что реально возвращает бэкенд (как в ReportsService)
- */
-interface RawSalesReportResponse {
-  totalDeals: number;
-  totalRevenue: number;
-  byUnitType: {
-    type: UnitType;
-    dealsCount: number;
-    revenue: number;
-  }[];
-  byDealType: {
-    type: DealType;
-    dealsCount: number;
-    revenue: number;
-  }[];
-  byManager: {
-    managerId: string;
-    managerName: string;
-    dealsCount: number;
-    revenue: number;
-  }[];
-}
-
-/**
  * Нормализованный тип для фронта — удобные объекты по ключу
  */
 export interface SalesReport {
@@ -94,30 +70,67 @@ export async function fetchSalesReport(params: {
     throw new Error('Не удалось построить отчёт');
   }
 
-  const raw: RawSalesReportResponse = await res.json();
+  // raw может быть в разных форматах (старый/новый бэк) — выдержим всё
+  const raw = (await res.json()) as any;
 
   const byUnitType: SalesReport['byUnitType'] = {};
-  for (const item of raw.byUnitType) {
-    byUnitType[item.type] = {
-      count: item.dealsCount,
-      revenue: item.revenue,
-    };
+  const rawByUnitType = raw?.byUnitType;
+
+  if (Array.isArray(rawByUnitType)) {
+    // Новый формат: массив { type, dealsCount, revenue }
+    for (const item of rawByUnitType) {
+      if (!item) continue;
+      const type = item.type as UnitType;
+      byUnitType[type] = {
+        count: Number(item.dealsCount ?? item.count ?? 0),
+        revenue: Number(item.revenue ?? 0),
+      };
+    }
+  } else if (rawByUnitType && typeof rawByUnitType === 'object') {
+    // Старый формат: объект по ключам типа { APARTMENT: { dealsCount, revenue } }
+    for (const [key, value] of Object.entries(rawByUnitType)) {
+      if (!value) continue;
+      const type = key as UnitType;
+      const v = value as any;
+      byUnitType[type] = {
+        count: Number(v.dealsCount ?? v.count ?? 0),
+        revenue: Number(v.revenue ?? 0),
+      };
+    }
   }
 
   const byDealType: SalesReport['byDealType'] = {};
-  for (const item of raw.byDealType) {
-    byDealType[item.type] = {
-      count: item.dealsCount,
-      revenue: item.revenue,
-    };
+  const rawByDealType = raw?.byDealType;
+
+  if (Array.isArray(rawByDealType)) {
+    // Новый формат: массив { type, dealsCount, revenue }
+    for (const item of rawByDealType) {
+      if (!item) continue;
+      const type = item.type as DealType;
+      byDealType[type] = {
+        count: Number(item.dealsCount ?? item.count ?? 0),
+        revenue: Number(item.revenue ?? 0),
+      };
+    }
+  } else if (rawByDealType && typeof rawByDealType === 'object') {
+    // Старый формат: объект по ключам типа { SALE: { dealsCount, revenue } }
+    for (const [key, value] of Object.entries(rawByDealType)) {
+      if (!value) continue;
+      const type = key as DealType;
+      const v = value as any;
+      byDealType[type] = {
+        count: Number(v.dealsCount ?? v.count ?? 0),
+        revenue: Number(v.revenue ?? 0),
+      };
+    }
   }
 
   return {
-    totalDeals: raw.totalDeals,
-    totalRevenue: raw.totalRevenue,
+    totalDeals: Number(raw.totalDeals ?? 0),
+    totalRevenue: Number(raw.totalRevenue ?? 0),
     byUnitType,
     byDealType,
-    byManager: raw.byManager,
+    byManager: Array.isArray(raw.byManager) ? raw.byManager : [],
   };
 }
 
