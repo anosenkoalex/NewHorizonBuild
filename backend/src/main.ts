@@ -12,7 +12,14 @@ async function bootstrap() {
   app.useGlobalGuards(new RolesGuard(reflector));
 
   // ===== CORS =====
-  const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+  const defaultOrigins = [
+    'http://localhost:5173',
+    'https://new-horizon-build.vercel.app',
+  ];
+
+  const allowedOrigins = (
+    process.env.CORS_ORIGIN ?? defaultOrigins.join(',')
+  )
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
@@ -25,6 +32,8 @@ async function bootstrap() {
       return cb(new Error(`CORS blocked: ${origin}`), false);
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // ===== Static uploads =====
@@ -34,7 +43,6 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
 
-  // IMPORTANT for Docker: bind to 0.0.0.0 so nginx container can reach it
   await app.listen(port, '0.0.0.0');
 }
 
