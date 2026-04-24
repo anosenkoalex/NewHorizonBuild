@@ -2,44 +2,31 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 
 export default defineConfig(({ mode }) => {
-  // Загружаем env-файлы (admin/.env, .env.development, .env.production и т.д.)
   const env = loadEnv(mode, process.cwd(), '');
 
-  // Если хочешь в деве ходить через /api (без CORS) — включай прокси.
-  // Пример:
-  //   VITE_API_URL=/api
-  //   VITE_API_PROXY_TARGET=http://localhost:3000
-  const proxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:3000';
+  const apiUrl = env.VITE_API_URL || '/api';
 
   return {
     plugins: [react()],
-
+    define: {
+      'import.meta.env.VITE_API_URL': JSON.stringify(apiUrl),
+    },
     server: {
       port: 5173,
       strictPort: true,
-
-      // ВАЖНО: проксируем ТОЛЬКО /api и /uploads,
-      // чтобы не ломать SPA-роуты типа /units, /viewer и т.д.
       proxy: {
         '/api': {
-          target: proxyTarget,
+          target: env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
         '/uploads': {
-          target: proxyTarget,
+          target: env.VITE_API_PROXY_TARGET || 'http://localhost:3000',
           changeOrigin: true,
         },
       },
     },
-
-    preview: {
-      port: 4173,
-      strictPort: true,
-    },
-
-    // Если будешь деплоить в подпапку (GitHub Pages), меняешь base:
-    // base: '/your-repo-name/',
+    preview: { port: 4173, strictPort: true },
     base: '/',
   };
 });
