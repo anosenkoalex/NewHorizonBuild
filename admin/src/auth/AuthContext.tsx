@@ -37,7 +37,7 @@ const STORAGE_USER_KEY = 'nhb_user';
  *   VITE_API_URL=http://localhost:3000
  */
 const API_URL = (() => {
-  const raw = String((import.meta as any)?.env?.VITE_API_URL ?? '/api').trim();
+  const raw = String((import.meta as any)?.env?.VITE_API_URL ?? 'https://newhorizonbuild-backend.onrender.com').trim();
   return raw.endsWith('/') ? raw.slice(0, -1) : raw;
 })();
 
